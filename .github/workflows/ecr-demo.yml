@@ -17,15 +17,16 @@ permissions:
 env:
   AWS_REGION: ap-southeast-1
   AWS_ACCOUNT_ID: "367764689357"
+  ECR_REPOSITORY: pyae2006/oidc-demo
 
 jobs:
   build-and-push:
-    name: Build and Push Frontend + Backend
+    name: Build and Push
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Configure AWS credentials using OIDC
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -39,19 +40,23 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: aws sts get-caller-identity
 
+      
       - name: Login to Amazon ECR
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Push Odic  images
+      - name: Build and Push OIDC Image
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
           set -euo pipefail
+
           IMAGE_URI="${REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+
           docker build --pull -t "${IMAGE_URI}" .
           docker push "${IMAGE_URI}"
+
           echo "Pushed image: ${IMAGE_URI}"
